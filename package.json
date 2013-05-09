@@ -1,0 +1,20 @@
+{
+  "name": "min-stream-node",
+  "version": "0.0.0",
+  "description": "min-stream bindings for node.js",
+  "main": "tcp.js",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/creationix/min-stream-node.git"
+  },
+  "keywords": [
+    "min-stream",
+    "node",
+    "stream"
+  ],
+  "dependencies": {
+    "bops": "~0.0.3"
+  },
+  "author": "Tim Caswell <tim@creationix.com>",
+  "license": "MIT"
+}
