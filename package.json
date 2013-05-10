@@ -13,7 +13,7 @@
     "stream"
   ],
   "dependencies": {
-    "bops": "~0.0.3"
+    "bops": "~0.0.5"
   },
   "author": "Tim Caswell <tim@creationix.com>",
   "license": "MIT"
