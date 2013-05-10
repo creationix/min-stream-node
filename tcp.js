@@ -113,7 +113,7 @@ function socketToSource(socket) {
     check();
   });
 
-  return function (close, callback) {
+  var fn = function (close, callback) {
     if (close) {
       socket.destroy();
       socket.once("close", function () {
@@ -125,11 +125,13 @@ function socketToSource(socket) {
       check();
     }
   };
+  fn.is = "min-stream-read";
+  return fn;
 }
 
 exports.socketToSink = socketToSink;
 function socketToSink(socket) {
-  return function (read) {
+  var fn = function (read) {
     var reading;
     next();
 
@@ -156,4 +158,6 @@ function socketToSink(socket) {
 
     socket.on("drain", next);
   };
+  fn.is = "min-stream-sink";
+  return fn;
 }
