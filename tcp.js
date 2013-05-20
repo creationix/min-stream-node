@@ -39,6 +39,7 @@ function createServer(address, port, callback) {
     readQueue.push(callback);
     check();
   }
+  source.is = "min-stream-read";
 
   function check() {
     while (readQueue.length && dataQueue.length) {
