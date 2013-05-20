@@ -1,5 +1,6 @@
 "use strict";
 var net = require('net');
+var wrapStream = require('./common.js').wrapStream;
 
 exports.createServer = createServer;
 // Returns a source that emits requests.
@@ -46,7 +47,7 @@ function createServer(address, port, callback) {
   }
 
   function onConnection(socket) {
-    dataQueue.push([null, wrapSocket(socket)]);
+    dataQueue.push([null, wrapStream(socket)]);
     check();
   }
 }
@@ -63,101 +64,7 @@ function connect(address, port, callback) {
 
   function onConnected() {
     socket.removeListener("error", onError);
-    callback(null, wrapSocket(socket));
+    callback(null, wrapStream(socket));
   }
 }
 
-exports.wrapSocket = wrapSocket;
-function wrapSocket(socket) {
-  var obj = Object.create(socket);
-  obj.source = socketToSource(socket);
-  obj.sink = socketToSink(socket);
-  return obj;
-}
-
-exports.socketToSource = socketToSource;
-function socketToSource(socket) {
-  var dataQueue = [];
-  var readQueue = [];
-  var paused = true;
-
-  function check() {
-    while (dataQueue.length && readQueue.length) {
-      readQueue.shift().apply(null, dataQueue.shift());
-    }
-    if (paused && readQueue.length) {
-      socket.resume();
-      paused = false;
-    }
-    else if (!paused && dataQueue.length) {
-      socket.pause();
-      paused = true;
-    }
-  }
-
-  socket.on("error", function (err) {
-    dataQueue.push([err]);
-    check();
-  });
-
-  socket.on("end", function () {
-    dataQueue.push([]);
-    check();
-  });
-
-  socket.on("readable", function () {
-    var chunk;
-    while (chunk = socket.read()) {
-      dataQueue.push([null, chunk]);
-    }
-    check();
-  });
-
-  var fn = function (close, callback) {
-    if (close) {
-      socket.destroy();
-      socket.once("close", function () {
-        callback(close === true ? null : close);
-      });
-    }
-    else {
-      readQueue.push(callback);
-      check();
-    }
-  };
-  fn.is = "min-stream-read";
-  return fn;
-}
-
-exports.socketToSink = socketToSink;
-function socketToSink(socket) {
-  var fn = function (read) {
-    var reading;
-    next();
-
-    function next() {
-      if (reading) return;
-      reading = true;
-      read(null, onRead);
-    }
-
-    function onRead(err, chunk) {
-
-      reading = false;
-      if (chunk === undefined) {
-        socket.end();
-        if (err) {
-          console.error(err.toString());
-          socket.destroy();
-        }
-      }
-      else if (socket.write(chunk)) {
-        next();
-      }
-    }
-
-    socket.on("drain", next);
-  };
-  fn.is = "min-stream-sink";
-  return fn;
-}
