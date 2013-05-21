@@ -1,3 +1,5 @@
+"use strict";
+
 exports.streamToSource = streamToSource;
 function streamToSource(stream) {
   var dataQueue = [];
@@ -73,6 +75,12 @@ function streamToSink(stream) {
           console.error(err.toString());
           stream.destroy();
         }
+        read(true, function (err) {
+          if (err) {
+            console.error(err.toString());
+            stream.destroy();
+          }
+        });
       }
       else if (stream.write(chunk)) {
         next();
@@ -89,7 +97,7 @@ exports.wrapStream = wrapStream;
 function wrapStream(stream) {
   var obj = Object.create(stream);
   if (stream.readable) {
-    obj.source = streamToSource(stream);  
+    obj.source = streamToSource(stream);
   }
   if (stream.writable) {
     obj.sink = streamToSink(stream);
