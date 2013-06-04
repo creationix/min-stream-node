@@ -55,7 +55,8 @@ function streamToSource(stream) {
 }
 
 exports.streamToSink = streamToSink;
-function streamToSink(stream) {
+function streamToSink(stream, end) {
+  if (end === undefined) end = true;
   var fn = function (read) {
     var reading;
     next();
@@ -70,7 +71,7 @@ function streamToSink(stream) {
 
       reading = false;
       if (chunk === undefined) {
-        stream.end();
+        if (end) stream.end();
         if (err) {
           console.error(err.toString());
           stream.destroy();

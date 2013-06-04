@@ -1,6 +1,6 @@
 {
   "name": "min-stream-node",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "min-stream bindings for node.js",
   "main": "tcp.js",
   "repository": {
@@ -13,7 +13,7 @@
     "stream"
   ],
   "dependencies": {
-    "bops": "~0.0.5"
+    "bops": "~0.0.6"
   },
   "author": "Tim Caswell <tim@creationix.com>",
   "license": "MIT"
