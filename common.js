@@ -38,7 +38,7 @@ function streamToSource(stream) {
     check();
   });
 
-  var fn = function (close, callback) {
+  return function (close, callback) {
     if (close) {
       stream.destroy();
       stream.once("close", function () {
@@ -50,14 +50,12 @@ function streamToSource(stream) {
       check();
     }
   };
-  fn.is = "min-stream-read";
-  return fn;
 }
 
 exports.streamToSink = streamToSink;
 function streamToSink(stream, end) {
   if (end === undefined) end = true;
-  var fn = function (read) {
+  return function (read) {
     var reading;
     next();
 
@@ -76,12 +74,6 @@ function streamToSink(stream, end) {
           console.error(err.toString());
           stream.destroy();
         }
-        read(true, function (err) {
-          if (err) {
-            console.error(err.toString());
-            stream.destroy();
-          }
-        });
       }
       else if (stream.write(chunk)) {
         next();
@@ -90,8 +82,6 @@ function streamToSink(stream, end) {
 
     stream.on("drain", next);
   };
-  fn.is = "min-stream-sink";
-  return fn;
 }
 
 exports.wrapStream = wrapStream;
