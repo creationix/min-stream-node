@@ -1,3 +1,9 @@
+// This module implements the js-git fs interface for node.js
+// The interface is documented at:
+//
+//   https://github.com/creationix/js-git/blob/master/specs/fs.md
+//
+
 var fs = require('fs');
 
 module.exports = {
