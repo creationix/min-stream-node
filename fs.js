@@ -5,18 +5,40 @@
 //
 
 var fs = require('fs');
+var pathJoin = require('path').join;
 
-module.exports = {
-  stat: stat,
-  read: read,
-  write: write,
-  unlink: unlink,
-  readlink: readlink,
-  symlink: symlink,
-  readdir: readdir,
-  rmdir: rmdir,
-  mkdir: mkdir
-};
+module.exports = chroot;
+chroot.stat = stat;
+chroot.read = read;
+chroot.write = write;
+chroot.unlink = unlink;
+chroot.readlink = readlink;
+chroot.symlink = symlink;
+chroot.readdir = readdir;
+chroot.rmdir = rmdir;
+chroot.mkdir = mkdir;
+
+function chroot(root) {
+
+  return {
+    stat: wrap(stat),
+    read: wrap(read),
+    write: wrap(write),
+    unlink: wrap(unlink),
+    readlink: wrap(readlink),
+    symlink: wrap(symlink),
+    readdir: wrap(readdir),
+    rmdir: wrap(rmdir),
+    mkdir: wrap(mkdir),
+  };
+
+  function wrap(fn) {
+    return function (path) {
+      arguments[0] = pathJoin(root, pathJoin("/", path));
+      return fn.apply(this, arguments);
+    };
+  }
+}
 
 // Given a path, return a continuable for the stat object.
 function stat(path) {
