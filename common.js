@@ -32,10 +32,12 @@ function streamToSource(stream) {
 
   stream.on("readable", function () {
     var chunk;
+    var data = false;
     while (chunk = stream.read()) {
+      data = true;
       dataQueue.push([null, chunk]);
     }
-    check();
+    if (data) check();
   });
 
   return function (close, callback) {
@@ -55,33 +57,47 @@ function streamToSource(stream) {
 exports.streamToSink = streamToSink;
 function streamToSink(stream, end) {
   if (end === undefined) end = true;
-  return function (read) {
-    var reading;
-    next();
+  var reading = false, writing = false;
+  var source, callback;
 
-    function next() {
-      if (reading) return;
+  return sink;
+
+  function sink(read) {
+    source = read;
+    return continuable;
+  }
+
+  function continuable(cb) {
+    callback = cb;
+    stream.on("drain", onDrain);
+    check();
+  }
+
+  function onDrain() {
+    writing = false;
+    check();
+  }
+
+  function check() {
+    while (!(reading || writing)) {
       reading = true;
-      read(null, onRead);
+      source(null, onRead);
     }
+  }
 
-    function onRead(err, chunk) {
-
-      reading = false;
-      if (chunk === undefined) {
-        if (end) stream.end();
-        if (err) {
-          console.error(err.toString());
-          stream.destroy();
-        }
-      }
-      else if (stream.write(chunk)) {
-        next();
-      }
+  function onRead(err, chunk) {
+    reading = false;
+    if (chunk === undefined) {
+      if (end) stream.end();
+      if (err) stream.destroy();
+      callback(err);
     }
+    else {
+      writing = !stream.write(chunk);
+      check();
+    }
+  }
 
-    stream.on("drain", next);
-  };
 }
 
 exports.wrapStream = wrapStream;
