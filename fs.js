@@ -47,15 +47,15 @@ function stat(path) {
 function read(path, options) {
   options = options || {};
   var position = options.start;
-  var fd, reading;
+  var fd, locked;
   var dataQueue = [];
   var readQueue = [];
 
   // TODO: don't open the file till the first read.  Be lazy.
-  // simulate a read lock for open and return the stream source.
-  reading = true;
+  // lock for open and return the stream source.
+  locked = true;
   fs.open(path, "r", function (err, result) {
-    reading = false;
+    locked = false;
     if (err) dataQueue.push([err]);
     fd = result;
     check();
@@ -64,7 +64,7 @@ function read(path, options) {
   return source;
 
   function finish(err) {
-    reading = true;
+    locked = true;
     if (fd) {
       fs.close(fd, function () {
         flush(err);
@@ -74,10 +74,11 @@ function read(path, options) {
   }
 
   function flush(err) {
+    dataQueue.length = 0;
     while (readQueue.length) {
       readQueue.shift()(err);
     }
-    reading = false;
+    locked = false;
   }
 
   function check() {
@@ -88,7 +89,7 @@ function read(path, options) {
       }
       readQueue.shift().apply(null, item);
     }
-    if (reading || !readQueue.length) return;
+    if (locked || !readQueue.length) return;
     var length = 8192;
     if (typeof position === 'number' && typeof options.end === 'number') {
       length = Math.min(length, options.end - position);
@@ -98,12 +99,12 @@ function read(path, options) {
       }
     }
     var buffer = new Buffer(length);
-    reading = true;
+    locked = true;
     fs.read(fd, buffer, 0, length, position, onRead);
   }
 
   function onRead(err, bytesRead, buffer) {
-    reading = false;
+    locked = false;
     if (err) {
       dataQueue.push([err]);
       return check();
@@ -123,12 +124,13 @@ function read(path, options) {
   }
 
   function source(close, callback) {
-    if (close) {
-      // TODO: ensure the callback will eventually match the close.  Be robust.
-      dataQueue.push([close === true ? null : close]);
-    }
     readQueue.push(callback);
-    check();
+    if (close) {
+      finish(close === true ? null : close);
+    }
+    else {
+      check();
+    }
   }
 
 }
@@ -136,40 +138,62 @@ function read(path, options) {
 function write(path, options) {
   options = options || {};
   var dataQueue = [];
-  var read, fd;
+  var read, fd, reading, writing;
   var callback;
 
-  function onOpen(err, result) {
-    if (err) dataQueue.push([err]);
-    fd = result;
-    check();
-  }
-
   function onRead() {
+    reading = false;
     dataQueue.push(arguments);
     check();
   }
 
-  function check() {
-    if (!fd) return;
-    if (dataQueue.length) {
-
-    }
-
+  function onOpen(err, result) {
+    writing = false;
+    // If we fail opening the target file, cancel the stream.
+    if (err) return read(err, onRead);
+    fd = result;
+    check();
   }
 
-  throw new Error("TODO: finish implementing this function");
+  function onWrite(err, bytesWritten, buffer) {
+    writing = false;
+    if (err) return read(err, onRead);
+    if (bytesWritten < buffer.length) {
+      var slice = buffer.slice(bytesWritten);
+      writing = true;
+      fs.write(fd, slice, 0, slice.length, null, onWrite);
+    }
+    else {
+      check();
+    }
+  }
+
+  function check() {
+    if (!writing && dataQueue.length) {
+      var next = dataQueue.shift();
+      var err = next[0];
+      var item = next[1];
+      if (item === undefined) return callback(err);
+      writing = true;
+      fs.write(fd, item, 0, item.length, null, onWrite);
+    }
+    if (!reading && !dataQueue.length) {
+      reading = true;
+      read(null, onRead);
+    }
+  }
 
   return function (source) {
     read = source;
     return function (cb) {
       callback = cb;
+      writing = true;
       fs.open(path, "w", options.mode, onOpen);
+      reading = true;
       read(null, onRead);
     };
   };
 }
-
 
 function unlink(path) {
   return function (callback) {
