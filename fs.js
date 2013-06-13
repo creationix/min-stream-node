@@ -51,18 +51,6 @@ function read(path, options) {
   var dataQueue = [];
   var readQueue = [];
 
-  // TODO: don't open the file till the first read.  Be lazy.
-  // lock for open and return the stream source.
-  locked = true;
-  fs.open(path, "r", function (err, result) {
-    locked = false;
-    if (err) dataQueue.push([err]);
-    fd = result;
-    check();
-  });
-
-  return source;
-
   function finish(err) {
     locked = true;
     if (fd) {
@@ -78,7 +66,16 @@ function read(path, options) {
     while (readQueue.length) {
       readQueue.shift()(err);
     }
-    locked = false;
+  }
+
+  function start() {
+    locked = true;
+    fs.open(path, "r", function (err, result) {
+      locked = false;
+      if (err) dataQueue.push([err]);
+      fd = result;
+      check();
+    });
   }
 
   function check() {
@@ -90,6 +87,9 @@ function read(path, options) {
       readQueue.shift().apply(null, item);
     }
     if (locked || !readQueue.length) return;
+    if (!fd) {
+      return start();
+    }
     var length = 8192;
     if (typeof position === 'number' && typeof options.end === 'number') {
       length = Math.min(length, options.end - position);
@@ -123,7 +123,7 @@ function read(path, options) {
     check();
   }
 
-  function source(close, callback) {
+  return function (close, callback) {
     readQueue.push(callback);
     if (close) {
       finish(close === true ? null : close);
@@ -131,7 +131,7 @@ function read(path, options) {
     else {
       check();
     }
-  }
+  };
 
 }
 
