@@ -86,13 +86,13 @@ function streamToSink(stream, end) {
   }
 
   function onRead(err, chunk) {
-    reading = false;
     if (chunk === undefined) {
       if (end) stream.end();
       if (err) stream.destroy();
       callback(err);
     }
     else {
+      reading = false;
       writing = !stream.write(chunk);
       check();
     }
