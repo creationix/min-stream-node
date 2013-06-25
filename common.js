@@ -87,8 +87,12 @@ function streamToSink(stream, end) {
 
   function onRead(err, chunk) {
     if (chunk === undefined) {
-      if (end) stream.end();
-      if (err) stream.destroy();
+      if (err) {
+        stream.destroy();
+      }
+      else if (end) {
+        stream.end();
+      }
       callback(err);
     }
     else {
